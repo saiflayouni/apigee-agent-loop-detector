@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apigee X — Agentic Loop Detection</title>
+<style>
+:root {
+  --bg:       #0d1117;
+  --surface:  #161b22;
+  --border:   #30363d;
+  --text:     #e6edf3;
+  --muted:    #8b949e;
+  --green:    #3fb950;
+  --red:      #f85149;
+  --blue:     #58a6ff;
+  --purple:   #bc8cff;
+  --yellow:   #e3b341;
+  --g-blue:   #4285F4;
+  --g-red:    #EA4335;
+  --g-green:  #34A853;
+  --g-yellow: #FBBC05;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Google Sans', 'Segoe UI', system-ui, sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+header {
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.logo { display: flex; align-items: center; gap: 12px; }
+.gdots { display: flex; gap: 5px; }
+.gdot { width: 11px; height: 11px; border-radius: 50%; }
+h1 { font-size: 17px; font-weight: 600; }
+h1 span { color: var(--g-blue); }
+.subtitle { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.controls { display: flex; align-items: center; gap: 8px; }
+
+/* mode tabs */
+.tabs {
+  display: flex;
+  background: rgba(0,0,0,0.4);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+.tab {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+.tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+
+/* action buttons */
+button.run {
+  padding: 7px 18px;
+  border-radius: 7px;
+  border: none;
+  background: var(--g-blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity .15s;
+}
+button.run:disabled { opacity: .4; cursor: not-allowed; }
+button.reset {
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+button.reset:hover { color: var(--text); border-color: var(--text); }
+
+/* ── Main 3-panel grid ───────────────────────────────────── */
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  padding: 14px;
+  overflow: hidden;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.panel-icon { font-size: 18px; }
+.panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--muted);
+}
+.dot {
+  margin-left: auto;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background .3s;
+}
+.dot.active  { background: var(--green); animation: blink 1.2s infinite; }
+.dot.blocked { background: var(--red); animation: none; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── Agent panel ─────────────────────────────────────────── */
+.big-cost {
+  text-align: center;
+  padding: 14px;
+  background: rgba(248,81,73,.06);
+  border: 1px solid rgba(248,81,73,.12);
+  border-radius: 10px;
+}
+.big-cost .amount {
+  font-size: 46px;
+  font-weight: 800;
+  font-family: 'Courier New', monospace;
+  color: var(--red);
+  letter-spacing: -2px;
+  line-height: 1;
+}
+.big-cost .label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 11px;
+  background: rgba(255,255,255,.03);
+  border-radius: 7px;
+  font-size: 13px;
+}
+.stat-row .val { font-size: 22px; font-weight: 700; color: var(--red); font-family: monospace; }
+
+.pbar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.pbar-fill { height: 100%; background: var(--red); border-radius: 2px; transition: width .1s; }
+
+/* ── Apigee panel ────────────────────────────────────────── */
+.hop-box {
+  text-align: center;
+  padding: 12px;
+  background: rgba(88,166,255,.05);
+  border: 1px solid rgba(88,166,255,.1);
+  border-radius: 10px;
+}
+.hop-box .num {
+  font-size: 42px;
+  font-weight: 800;
+  font-family: monospace;
+  color: var(--blue);
+  line-height: 1;
+}
+.hop-box .lbl { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.pips { display: flex; gap: 4px; margin-top: 10px; }
+.pip { flex:1; height: 5px; border-radius: 3px; background: var(--border); transition: background .2s; }
+.pip.on   { background: var(--blue); }
+.pip.warn { background: var(--red); }
+
+.gem-card {
+  padding: 11px 13px;
+  background: rgba(188,140,255,.05);
+  border: 1px solid rgba(188,140,255,.15);
+  border-radius: 10px;
+  display: none;
+}
+.gem-card.show { display: block; }
+.gem-lbl { font-size: 10px; color: var(--purple); text-transform: uppercase; letter-spacing:.06em; margin-bottom:8px; }
+.conf-row { display: flex; align-items: center; gap: 10px; }
+.conf-num { font-size: 28px; font-weight: 700; font-family: monospace; color: var(--purple); min-width: 50px; }
+.cbar { flex:1; }
+.cbar-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.cbar-fill { height: 100%; border-radius: 3px; transition: width .5s ease; background: linear-gradient(90deg,var(--green),var(--yellow),var(--red)); }
+.cbar-lbl { font-size: 10px; color: var(--muted); margin-top: 3px; }
+.gem-reason { font-size: 11px; color: var(--muted); margin-top: 7px; line-height: 1.45; }
+
+/* ── Log (shared) ────────────────────────────────────────── */
+.log {
+  flex: 1;
+  background: rgba(0,0,0,.35);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 11.5px;
+  overflow-y: auto;
+  min-height: 60px;
+}
+.log::-webkit-scrollbar { width: 4px; }
+.log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.le {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+  animation: fi .2s ease;
+}
+@keyframes fi { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:none} }
+.ln  { color: var(--muted); min-width: 30px; }
+.lok { color: var(--green); }
+.lbl { color: var(--red); font-weight: 700; }
+.lint{ color: var(--blue); font-size: 10.5px; }
+.lpurp{ color: var(--purple); }
+
+/* ── Result panel ────────────────────────────────────────── */
+.empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.empty-state .icon { font-size: 36px; }
+
+.result-card { display: none; flex-direction: column; gap: 10px; }
+.result-card.show { display: flex; animation: pop .35s ease; }
+@keyframes pop { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:none} }
+
+.badge-429 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(248,81,73,.12);
+  border: 1px solid rgba(248,81,73,.25);
+  border-radius: 9px;
+  padding: 11px 16px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--red);
+  font-family: monospace;
+}
+.det-badge {
+  display: inline-flex;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.det-badge.structural { background:rgba(88,166,255,.12); color:var(--blue); }
+.det-badge.semantic   { background:rgba(188,140,255,.12); color:var(--purple); }
+
+.rf {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 11px;
+  background: rgba(255,255,255,.03);
+  border-radius: 7px;
+  font-size: 13px;
+}
+.rf .k { color: var(--muted); font-family: monospace; }
+.rf .v { font-weight: 700; font-family: monospace; }
+
+.saved-box {
+  padding: 14px;
+  background: rgba(52,168,83,.08);
+  border: 1px solid rgba(52,168,83,.18);
+  border-radius: 10px;
+  text-align: center;
+}
+.saved-amt { font-size: 38px; font-weight: 800; color: var(--green); font-family: monospace; line-height: 1; }
+.saved-lbl { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+/* ── Footer ─────────────────────────────────────────────── */
+footer {
+  padding: 9px 28px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.tag {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(66,133,244,.1);
+  color: var(--g-blue);
+  font-size: 10.5px;
+}
+.tags { display: flex; gap: 6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="gdots">
+      <div class="gdot" style="background:var(--g-blue)"></div>
+      <div class="gdot" style="background:var(--g-red)"></div>
+      <div class="gdot" style="background:var(--g-green)"></div>
+      <div class="gdot" style="background:var(--g-yellow)"></div>
+    </div>
+    <div>
+      <h1><span>Apigee X</span> — Agentic Loop Detection</h1>
+      <div class="subtitle">Real-time AI agent protection · Gemini 2.5 Flash semantic analysis</div>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="tabs">
+      <button class="tab active" onclick="setMode('before',this)">⚠ Before</button>
+      <button class="tab" onclick="setMode('after',this)">🛡 Structural</button>
+      <button class="tab" onclick="setMode('semantic',this)">🧠 Semantic</button>
+    </div>
+    <button class="run" id="runBtn" onclick="runDemo()">▶ Run</button>
+    <button class="reset" onclick="resetDemo()">↺ Reset</button>
+  </div>
+</header>
+
+<main>
+  <!-- ── Panel 1: Agent ──────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-icon">🤖</span>
+      <span class="panel-title">AI Agent</span>
+      <div class="dot" id="dotAgent"></div>
+    </div>
+
+    <div class="big-cost">
+      <div class="amount">$<span id="costVal">0.000</span></div>
+      <div class="label">cumulative API spend</div>
+    </div>
+
+    <div class="stat-row">
+      <span>Calls made</span>
+      <span class="val" id="callNum">0</span>
+    </div>
+
+    <div class="pbar"><div class="pbar-fill" id="pbarFill" style="width:0%"></div></div>
+
+    <div class="log" id="agentLog"></div>
+  </div>
+
+  <!-- ── Panel 2: Apigee ────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-icon">🛡️</span>
+      <span class="panel-title">Apigee Gateway</span>
+      <div class="dot" id="dotApigee"></div>
+    </div>
+
+    <div class="hop-box">
+      <div class="num" id="hopVal">—</div>
+      <div class="lbl">current hop</div>
+      <div class="pips" id="pips"></div>
+    </div>
+
+    <div class="gem-card" id="gemCard">
+      <div class="gem-lbl">✦ Gemini 2.5 Flash — Semantic Analysis</div>
+      <div class="conf-row">
+        <div class="conf-num" id="confNum">—</div>
+        <div class="cbar">
+          <div class="cbar-track"><div class="cbar-fill" id="confFill" style="width:0%"></div></div>
+          <div class="cbar-lbl">loop confidence</div>
+        </div>
+      </div>
+      <div class="gem-reason" id="gemReason"></div>
+    </div>
+
+    <div class="log" id="apigeeLog"></div>
+  </div>
+
+  <!-- ── Panel 3: Result ────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-icon">📊</span>
+      <span class="panel-title">Result</span>
+      <div class="dot" id="dotResult"></div>
+    </div>
+
+    <div class="empty-state" id="emptyState">
+      <div class="icon">⏳</div>
+      <div>Run a demo to see results</div>
+    </div>
+
+    <div class="result-card" id="resultCard">
+      <div class="badge-429">
+        <span>429</span><span>LOOP BLOCKED</span>
+      </div>
+      <div id="detBadge"></div>
+      <div class="rf"><span class="k">hop_count</span><span class="v" id="rHop">—</span></div>
+      <div class="rf" id="rConfRow" style="display:none">
+        <span class="k">confidence</span>
+        <span class="v" id="rConf" style="color:var(--purple)">—</span>
+      </div>
+      <div class="rf">
+        <span class="k">calls_prevented</span>
+        <span class="v" id="rCalls" style="color:var(--blue)">—</span>
+      </div>
+      <div class="saved-box">
+        <div class="saved-amt">$<span id="rSaved">—</span></div>
+        <div class="saved-lbl">saved by Apigee</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="tags">
+    <span class="tag">Apigee X Emulator 1.9.2</span>
+    <span class="tag">Gemini 2.5 Flash</span>
+    <span class="tag">GDE Demo</span>
+  </div>
+  <div>Runtime <code>:8998</code> · UI <code>:3000</code></div>
+</footer>
+
+<script>
+let mode = 'before', running = false, es = null;
+
+function setMode(m, btn) {
+  mode = m;
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setDot(id, state) {
+  const d = document.getElementById(id);
+  d.className = 'dot' + (state ? ' ' + state : '');
+}
+
+function addLog(id, html) {
+  const log = document.getElementById(id);
+  const e = document.createElement('div');
+  e.className = 'le';
+  e.innerHTML = html;
+  log.appendChild(e);
+  log.scrollTop = log.scrollHeight;
+}
+
+function buildPips(hop, max = 10) {
+  const c = document.getElementById('pips');
+  c.innerHTML = '';
+  for (let i = 0; i < max; i++) {
+    const p = document.createElement('div');
+    p.className = 'pip' + (i < hop ? (hop >= max - 1 ? ' warn' : ' on') : '');
+    c.appendChild(p);
+  }
+}
+
+function resetDemo() {
+  if (es) { es.close(); es = null; }
+  running = false;
+  ['costVal','callNum','hopVal','confNum','gemReason'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = id === 'hopVal' || id === 'confNum' ? '—' : (id.includes('Val') || id.includes('Num') ? '0' : '');
+    if (id === 'costVal') el.textContent = '0.000';
+  });
+  document.getElementById('pbarFill').style.width = '0%';
+  document.getElementById('pips').innerHTML = '';
+  document.getElementById('agentLog').innerHTML = '';
+  document.getElementById('apigeeLog').innerHTML = '';
+  document.getElementById('gemCard').classList.remove('show');
+  document.getElementById('confFill').style.width = '0%';
+  document.getElementById('resultCard').classList.remove('show');
+  document.getElementById('emptyState').style.display = '';
+  document.getElementById('emptyState').innerHTML = '<div class="icon">⏳</div><div>Run a demo to see results</div>';
+  document.getElementById('runBtn').disabled = false;
+  ['dotAgent','dotApigee','dotResult'].forEach(id => setDot(id, ''));
+}
+
+function runDemo() {
+  if (running) return;
+  resetDemo();
+  running = true;
+  document.getElementById('runBtn').disabled = true;
+  setDot('dotAgent', 'active');
+
+  if (mode === 'before') {
+    runBefore();
+  } else {
+    setDot('dotApigee', 'active');
+    buildPips(0);
+    document.getElementById('hopVal').textContent = '0';
+    es = new EventSource('/api/run?mode=' + mode);
+
+    es.addEventListener('call', ev => {
+      const d = JSON.parse(ev.data);
+      document.getElementById('costVal').textContent = (d.cost || 0).toFixed(3);
+      document.getElementById('callNum').textContent = d.call;
+      if (d.hop !== undefined) {
+        document.getElementById('hopVal').textContent = d.hop;
+        buildPips(d.hop);
+      }
+      const intent = d.intent ? ` <span class="lint">"${d.intent.substring(0,38)}${d.intent.length>38?'…':''}"</span>` : '';
+      addLog('agentLog', `<span class="ln">#${d.call}</span><span class="lok">200 OK</span>${intent}`);
+      addLog('apigeeLog', `<span class="ln">hop&nbsp;${d.hop ?? '—'}</span><span class="lok">✓ passed</span>`);
+    });
+
+    es.addEventListener('gemini_check', ev => {
+      const d = JSON.parse(ev.data);
+      document.getElementById('gemCard').classList.add('show');
+      addLog('apigeeLog', `<span class="ln">hop&nbsp;${d.hop}</span><span class="lpurp">✦ Gemini analyzing…</span>`);
+    });
+
+    es.addEventListener('blocked', ev => {
+      const d = JSON.parse(ev.data);
+      const b = d.body;
+
+      addLog('agentLog', `<span class="ln">#${d.call}</span><span class="lbl">429 BLOCKED</span>`);
+      addLog('apigeeLog', `<span class="ln">hop&nbsp;${d.hop}</span><span class="lbl">⛔ BLOCKED</span>`);
+
+      if (d.hop !== undefined) {
+        document.getElementById('hopVal').textContent = d.hop;
+        buildPips(d.hop + 1);
+      }
+      if (b.detection_type === 'semantic' && b.semantic_confidence) {
+        const c = b.semantic_confidence;
+        document.getElementById('confNum').textContent = c.toFixed(2);
+        document.getElementById('confFill').style.width = (c * 100) + '%';
+        document.getElementById('gemReason').textContent = b.reason || '';
+      }
+      showResult(b);
+      setDot('dotAgent', 'blocked');
+      setDot('dotResult', 'blocked');
+      finish();
+    });
+
+    es.addEventListener('done', () => finish());
+    es.onerror = () => finish();
+  }
+}
+
+function finish() {
+  if (es) { es.close(); es = null; }
+  running = false;
+  document.getElementById('runBtn').disabled = false;
+  setDot('dotAgent', '');
+  setDot('dotApigee', '');
+}
+
+function showResult(b) {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('detBadge').innerHTML =
+    `<span class="det-badge ${b.detection_type}">${b.detection_type} detection</span>`;
+  document.getElementById('rHop').textContent = b.hop_count;
+  document.getElementById('rCalls').textContent = b.calls_prevented;
+  document.getElementById('rSaved').textContent = b.cost_saved_usd;
+  const confRow = document.getElementById('rConfRow');
+  if (b.detection_type === 'semantic') {
+    confRow.style.display = 'flex';
+    document.getElementById('rConf').textContent = b.semantic_confidence;
+  } else {
+    confRow.style.display = 'none';
+  }
+  document.getElementById('resultCard').classList.add('show');
+}
+
+function runBefore() {
+  let call = 0, cost = 0;
+  const TOTAL = 50;
+  document.getElementById('hopVal').textContent = '∞';
+
+  const t = setInterval(() => {
+    if (!running) { clearInterval(t); return; }
+    call++; cost += 0.002;
+    document.getElementById('costVal').textContent = cost.toFixed(3);
+    document.getElementById('callNum').textContent = call;
+    document.getElementById('pbarFill').style.width = ((call / TOTAL) * 100) + '%';
+    addLog('agentLog', `<span class="ln">#${call}</span><span class="lok">200 OK</span> <span style="color:var(--red);font-size:10.5px">+$0.002</span>`);
+    addLog('apigeeLog', `<span style="color:var(--border)">— no gateway —</span>`);
+
+    if (call >= TOTAL) {
+      clearInterval(t);
+      running = false;
+      document.getElementById('runBtn').disabled = false;
+      setDot('dotAgent', '');
+      document.getElementById('emptyState').innerHTML = `
+        <div class="icon">🔥</div>
+        <div style="color:var(--red);font-size:15px;font-weight:700">${TOTAL} calls — still looping</div>
+        <div style="color:var(--red);font-size:30px;font-weight:800;margin-top:4px">$${cost.toFixed(2)} burned</div>
+        <div style="color:var(--muted);font-size:11px;margin-top:8px">Real runaway → 1,000 calls → $2.00+</div>`;
+    }
+  }, 80);
+}
+</script>
+</body>
+</html>

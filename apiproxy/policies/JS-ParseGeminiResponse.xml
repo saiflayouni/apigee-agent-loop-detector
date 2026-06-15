@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Javascript name="JS-ParseGeminiResponse" timeLimit="200">
+  <ResourceURL>jsc://parse-gemini-response.js</ResourceURL>
+</Javascript>

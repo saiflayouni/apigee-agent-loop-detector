@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RaiseFault name="RF-LoopDetected">
+  <FaultResponse>
+    <Set>
+      <StatusCode>429</StatusCode>
+      <ReasonPhrase>Too Many Requests</ReasonPhrase>
+      <Payload contentType="application/json">{loop.response_json}</Payload>
+    </Set>
+  </FaultResponse>
+  <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+</RaiseFault>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AssignMessage name="AM-BuildGeminiRequest">
+  <AssignTo createNew="true" transport="http" type="request">geminiRequest</AssignTo>
+  <Set>
+    <Verb>POST</Verb>
+    <Headers>
+      <Header name="Content-Type">application/json</Header>
+      <Header name="x-goog-api-key">{gemini.api.key}</Header>
+    </Headers>
+    <Payload contentType="application/json">{gemini.request.body}</Payload>
+  </Set>
+  <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+</AssignMessage>

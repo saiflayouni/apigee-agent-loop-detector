@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<APIProxy name="loop-detector">
+  <DisplayName>Agentic Loop Detector</DisplayName>
+  <Description>Detects infinite loops in AI agents</Description>
+  <BasePaths>/ai-agent</BasePaths>
+</APIProxy>

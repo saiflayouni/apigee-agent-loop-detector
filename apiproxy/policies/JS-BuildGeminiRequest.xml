@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Javascript name="JS-BuildGeminiRequest" timeLimit="200">
+  <ResourceURL>jsc://build-gemini-request.js</ResourceURL>
+</Javascript>

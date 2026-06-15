@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServiceCallout name="SC-GeminiSemanticCheck" continueOnError="true">
+  <Request clearPayload="false" variable="geminiRequest"/>
+  <Response>geminiResponse</Response>
+  <Timeout>5000</Timeout>
+  <HTTPTargetConnection>
+    <URL>https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent</URL>
+  </HTTPTargetConnection>
+</ServiceCallout>

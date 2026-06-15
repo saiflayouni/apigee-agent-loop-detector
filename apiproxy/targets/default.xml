@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TargetEndpoint name="default">
+  <HTTPTargetConnection>
+    <URL>http://httpbin.org/anything</URL>
+  </HTTPTargetConnection>
+</TargetEndpoint>
